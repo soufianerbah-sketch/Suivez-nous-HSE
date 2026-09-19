@@ -1,6 +1,6 @@
 {
-  "name": "قارورات الإطفاء - SOMIPHOS",
-  "short_name": "قارورات الإطفاء",
+  "name": "Suivez-nous HSE",
+  "short_name": "HSE",
   "description": "متابعة مراقبة وتعبئة قارورات الإطفاء",
   "start_url": "./index.html",
   "scope": "./",
