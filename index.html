@@ -8,6 +8,18 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Suivez-nous HSE</title>
+<meta name="description" content="تطبيق لمتابعة مراقبة وتعبئة قارورات الإطفاء وتنبيهك عند اقتراب الموعد">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Suivez-nous HSE">
+<meta property="og:title" content="Suivez-nous HSE">
+<meta property="og:description" content="تطبيق متابعة قارورات الإطفاء: المراقبة كل 6 أشهر والتعبئة كل عامين">
+<meta property="og:url" content="https://soufianerbah-sketch.github.io/Suivez-nous-HSE/">
+<meta property="og:image" content="https://soufianerbah-sketch.github.io/Suivez-nous-HSE/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="قارورة إطفاء">
+<meta property="og:locale" content="ar_AR">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
@@ -53,6 +65,10 @@ details.phone summary{cursor:pointer;font-weight:500;color:var(--ink)}
 details.phone .field{margin-top:10px;margin-bottom:0}
 .note{background:var(--amber-bg);color:var(--amber);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.9rem}
 
+.alert{background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.alert strong{display:block;font-size:1.05rem;margin-bottom:2px}
+.alert ul{margin:6px 0 10px;padding-inline-start:20px;color:var(--ink);font-size:.93rem}
+.alert .btns{display:flex;gap:6px;flex-wrap:wrap}
 .list{display:grid;gap:12px}
 .card{display:grid;grid-template-columns:1fr 92px;background:var(--surface);border:1px solid var(--line);border-inline-start:6px solid var(--line);border-radius:8px;overflow:hidden}
 .card.expired{border-inline-start-color:var(--red)}
@@ -105,7 +121,9 @@ input.dt,input.tel{direction:ltr;text-align:right}
     <button class="btn" id="addBtn" type="button">إضافة قارورة</button>
   </header>
 
-  <p class="rule">المراقبة كل 6 أشهر. وإذا أدخلت تاريخ آخر تعبئة، فسيُطلب منك تعبئتها بعد عامين من ذلك التاريخ.</p>
+  <p class="rule">أدخل تاريخ آخر تعبئة، وتاريخ آخر مراقبة إن وُجد. المراقبة كل 6 أشهر، والتعبئة إلزامية كل عامين.</p>
+
+  <div id="alertBox" class="alert" hidden></div>
 
   <div id="storageNote" class="note" hidden>التخزين غير متاح في هذا المتصفح، لذلك ستُفقد البيانات عند إغلاق الصفحة.</div>
 
@@ -133,8 +151,8 @@ input.dt,input.tel{direction:ltr;text-align:right}
         <div class="field"><label for="fWeight">الوزن (كغ)</label><input id="fWeight" type="number" min="0" step="0.5" inputmode="decimal" value="6"></div>
       </div>
       <div class="field"><label for="fLocation">مكان القارورة (اختياري)</label><input id="fLocation" autocomplete="off" placeholder="مثال: ممر الورشة"></div>
-      <div class="field"><label for="fCheck">تاريخ آخر مراقبة</label><input id="fCheck" class="dt" type="text" inputmode="numeric" maxlength="10" placeholder="25/03/2024" autocomplete="off" required><small>اكتب التاريخ بالشكل: يوم/شهر/سنة</small></div>
-      <div class="field"><label for="fRefill">تاريخ آخر تعبئة (اختياري)</label><input id="fRefill" class="dt" type="text" inputmode="numeric" maxlength="10" placeholder="25/03/2024" autocomplete="off"></div>
+      <div class="field"><label for="fRefill">تاريخ آخر تعبئة</label><input id="fRefill" class="dt" type="text" inputmode="numeric" maxlength="10" placeholder="25/03/2024" autocomplete="off" required><small>اكتب التاريخ بالشكل: يوم/شهر/سنة</small></div>
+      <div class="field"><label for="fCheck">تاريخ آخر مراقبة (اختياري)</label><input id="fCheck" class="dt" type="text" inputmode="numeric" maxlength="10" placeholder="25/03/2024" autocomplete="off"></div>
       <div class="dlg-actions">
         <button class="btn" type="submit">حفظ</button>
         <button class="btn ghost" type="button" id="cancelForm">إلغاء</button>
@@ -247,7 +265,8 @@ input.dt,input.tel{direction:ltr;text-align:right}
 
   // 6 months after the last operation; refill required 24 months after the last refill (if one was entered)
   function calc(it){
-    var lastOp = it.lastRefill && it.lastRefill > it.lastCheck ? it.lastRefill : it.lastCheck;
+    var ra = it.lastRefill || '', ck = it.lastCheck || '';
+    var lastOp = ra > ck ? ra : ck;
     var due = addMonths(lastOp, 6), kind = 'check';
     if (it.lastRefill){
       var refillDue = addMonths(it.lastRefill, 24);
@@ -309,8 +328,8 @@ input.dt,input.tel{direction:ltr;text-align:right}
         '<div class="need ' + r.kind + '">المطلوب: ' + KIND[r.kind] + '</div>' +
         '<div class="bar" role="img" aria-label="مرّ ' + r.pct + '% من المدة"><i style="width:' + r.pct + '%"></i></div>' +
         '<dl class="dates">' +
-          '<div><dt>آخر مراقبة</dt><dd>' + esc(fmt(parse(it.lastCheck))) + '</dd></div>' +
           (it.lastRefill ? '<div><dt>آخر تعبئة</dt><dd>' + esc(fmt(parse(it.lastRefill))) + '</dd></div>' : '') +
+          (it.lastCheck ? '<div><dt>آخر مراقبة</dt><dd>' + esc(fmt(parse(it.lastCheck))) + '</dd></div>' : '') +
           '<div><dt>الموعد القادم</dt><dd>' + esc(fmt(r.due)) + '</dd></div>' +
         '</dl>' +
         '<div class="actions">' +
@@ -327,9 +346,35 @@ input.dt,input.tel{direction:ltr;text-align:right}
     '</article>';
   }
 
+  function renderAlert(rows){
+    var box = $('alertBox');
+    var due = rows.filter(function(x){ return x.r.days <= 0; });
+    if (!due.length){ box.hidden = true; box.innerHTML = ''; return; }
+    var lis = '', lines = [];
+    due.forEach(function(x){
+      var it = x.it, r = x.r;
+      var name = it.serial + (it.location ? ' (' + it.location + ')' : '');
+      var state = r.days < 0 ? 'متأخرة ' + dayWord(Math.abs(r.days)) : 'موعدها اليوم';
+      lis += '<li>' + esc(name) + ': ' + KIND[r.kind] + '، ' + esc(state) + '</li>';
+      lines.push('قارورة ' + name + ': ' + KIND[r.kind] + '، ' + state);
+    });
+    var msg = encodeURIComponent('تحذير: حان موعد مراقبة أو تعبئة قارورات الإطفاء التالية:\n' + lines.join('\n'));
+    var actions;
+    if (phone){
+      var digits = phone.replace(/\D/g, ''), smsNum = phone.replace(/[^\d+]/g, '');
+      actions = '<div class="btns"><a class="btn small" href="' + esc('sms:' + smsNum + '?body=' + msg) + '">إرسال التحذير برسالة SMS</a>' +
+        '<a class="btn small" target="_blank" rel="noopener" href="' + esc('https://wa.me/' + digits + '?text=' + msg) + '">إرسال عبر واتساب</a></div>';
+    } else {
+      actions = '<div class="btns"><button class="btn small" id="alertPhoneBtn" type="button">إضافة رقم الإبلاغ</button></div>';
+    }
+    box.innerHTML = '<strong>تحذير: حان موعد ' + due.length + (due.length === 1 ? ' قارورة' : ' قارورات') + '</strong><ul>' + lis + '</ul>' + actions;
+    box.hidden = false;
+  }
+
   function render(){
     var rows = items.map(function(it){ return {it: it, r: calc(it)}; })
       .sort(function(a,b){ return a.r.days - b.r.days; });
+    renderAlert(rows);
     var list = $('list');
     if (!items.length){
       list.innerHTML = '<div class="empty"><p>لم تضف أي قارورة بعد. أضف القارورات التي بجانبك لتبدأ المتابعة.</p><button class="btn" data-act="add" type="button">إضافة قارورة</button></div>';
@@ -362,6 +407,13 @@ input.dt,input.tel{direction:ltr;text-align:right}
   $('cancelForm').addEventListener('click', closeForm);
   ['fCheck','fRefill','oDate'].forEach(function(id){
     $(id).addEventListener('input', function(e){ autoFmt(this, e); });
+  });
+  $('alertBox').addEventListener('click', function(e){
+    if (e.target.id === 'alertPhoneBtn'){
+      $('phoneBox').open = true;
+      $('phoneBox').scrollIntoView({block:'center'});
+      setTimeout(function(){ $('phone').focus({preventScroll:true}); }, 30);
+    }
   });
   $('phone').addEventListener('input', function(e){
     phone = e.target.value.trim();
@@ -399,8 +451,8 @@ input.dt,input.tel{direction:ltr;text-align:right}
     var serial = $('fSerial').value.trim();
     var check = parseDMY($('fCheck').value), refill = parseDMY($('fRefill').value);
     if (!serial){ $('fSerial').focus(); return; }
-    if (!check){ badDate($('fCheck')); return; }
-    if (refill === null){ badDate($('fRefill')); return; }
+    if (!refill){ badDate($('fRefill')); return; }
+    if (check === null){ badDate($('fCheck')); return; }
     var data = {
       serial: serial, type: $('fType').value, weight: $('fWeight').value,
       location: $('fLocation').value.trim(), lastCheck: check, lastRefill: refill
@@ -422,7 +474,6 @@ input.dt,input.tel{direction:ltr;text-align:right}
     if (it){
       if ($('oKind').value === 'refill'){
         it.lastRefill = d;
-        if (d > it.lastCheck) it.lastCheck = d;
       } else {
         it.lastCheck = d;
       }
